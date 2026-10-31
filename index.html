@@ -131,6 +131,10 @@
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
   .hp{position:absolute;left:-9999px}
   .note{font-size:12.5px}
+  .form-status{font-size:14px;font-weight:600;min-height:0}
+  .form-status.ok{color:#1f8a52}
+  .form-status.err{color:#c0392b}
+  form .btn[disabled]{opacity:.6;cursor:wait}
   form .btn{justify-content:center}
 
   footer{padding:48px 0 90px;font-size:14px;text-align:center}
@@ -254,8 +258,7 @@
         <p>Takes under a minute. For no-cooling emergencies, calling is fastest.</p>
         <a class="phone" href="tel:+18134281017">(813) 428-1017</a>
       </div>
-      <!-- Next session: connect to Firebase after the security checklist -->
-      <form onsubmit="event.preventDefault();alert('Demo only: bookings will be saved once the database is connected.');">
+      <form id="booking-form" novalidate>
         <div class="row">
           <label>Name<input name="name" required maxlength="80" autocomplete="name"></label>
           <label>Phone<input name="phone" type="tel" required maxlength="20" autocomplete="tel"></label>
@@ -267,6 +270,7 @@
         <label>What's going on?<textarea name="details" rows="3" maxlength="500" placeholder="e.g. upstairs bedroom is always 5° warmer"></textarea></label>
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <button class="btn" type="submit">Request my visit</button>
+        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
         <p class="note">We only use your details to contact you about this request.</p>
       </form>
     </div>
@@ -280,5 +284,56 @@
 </footer>
 
 <a class="btn call-fab" href="tel:+18134281017">📞 Call</a>
+<script type="module">
+  // Firebase web config: this identifies the project and is safe to be public.
+  // The Firestore rules are what protect the data (visitors can only create bookings).
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyAW4pmZfx9GtTAlcNfimpPdlqRoutBzQwk",
+    authDomain: "urgent-air-demo.firebaseapp.com",
+    projectId: "urgent-air-demo",
+    storageBucket: "urgent-air-demo.firebasestorage.app",
+    messagingSenderId: "744054726188",
+    appId: "1:744054726188:web:a5381476dc77bc904f3b89"
+  });
+  const db = getFirestore(app);
+
+  const form = document.getElementById("booking-form");
+  const status = document.getElementById("form-status");
+  const btn = form.querySelector("button[type=submit]");
+  const show = (msg, ok) => { status.textContent = msg; status.className = "form-status " + (ok ? "ok" : "err"); };
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    // Honeypot: real people never fill this hidden field, bots do
+    if ((f.get("website") || "").trim()) { form.reset(); show("Thanks! We'll call you shortly to confirm.", true); return; }
+
+    const name = (f.get("name") || "").trim();
+    const phone = (f.get("phone") || "").trim();
+    if (!name || phone.length < 7) { show("Please add your name and a phone number.", false); return; }
+
+    btn.disabled = true; show("Sending…", true);
+    try {
+      await addDoc(collection(db, "bookings"), {
+        name: name.slice(0, 80),
+        phone: phone.slice(0, 20),
+        service: f.get("service") || "Other",
+        date: (f.get("date") || "").slice(0, 10),
+        details: (f.get("details") || "").trim().slice(0, 500),
+        createdAt: serverTimestamp()
+      });
+      form.reset();
+      show("Thanks! We'll call you shortly to confirm.", true);
+    } catch (err) {
+      console.error(err);
+      show("Sorry, that didn't go through. Please call (813) 428-1017.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>
