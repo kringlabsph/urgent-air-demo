@@ -129,6 +129,10 @@
   label{font-size:13px;font-weight:600;color:var(--ink)}
   input,select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;margin-top:6px;background:var(--cream)}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
+  /* iPhone: stop the date box overflowing its column */
+  .row>label{min-width:0}
+  input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:50px}
+  input[type=date]::-webkit-date-and-time-value{text-align:left}
   .hp{position:absolute;left:-9999px}
   .note{font-size:12.5px}
   .form-status{font-size:14px;font-weight:600;min-height:0}
